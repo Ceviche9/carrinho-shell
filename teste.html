@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controlador Carrinho Shell</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .status.disconnected {
+            background: #fee;
+            color: #c33;
+        }
+        .status.connected {
+            background: #efe;
+            color: #3c3;
+        }
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            background: #1e3c72;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+        .connect-btn:hover {
+            background: #2a5298;
+        }
+        .connect-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .control-btn {
+            padding: 20px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .control-btn:active {
+            transform: scale(0.95);
+            background: #f0f0f0;
+        }
+        .control-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .control-btn.active {
+            background: #1e3c72;
+            color: white;
+            border-color: #1e3c72;
+        }
+        .btn-forward { grid-column: 2; background: #4caf50; color: white; border-color: #4caf50; }
+        .btn-left { grid-column: 1; grid-row: 2; background: #2196f3; color: white; border-color: #2196f3; }
+        .btn-stop { grid-column: 2; grid-row: 2; background: #f44336; color: white; border-color: #f44336; }
+        .btn-right { grid-column: 3; grid-row: 2; background: #9c27b0; color: white; border-color: #9c27b0; }
+        .btn-backward { grid-column: 2; grid-row: 3; background: #ff9800; color: white; border-color: #ff9800; }
+        .speed-control {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        .speed-control label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+        .speed-btns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .speed-btn {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .speed-btn.active {
+            background: #1e3c72;
+            color: white;
+            border-color: #1e3c72;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2d3748;
+            color: #68d391;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Carrinho Shell</h1>
+        
+        <div id="status" class="status disconnected">
+            Desconectado
+        </div>
+
+        <button id="connectBtn" class="connect-btn">Conectar ao Carrinho</button>
+
+        <div class="controls">
+            <button class="control-btn btn-forward" id="btnForward" disabled>
+                ▲<br>FRENTE
+            </button>
+            <button class="control-btn btn-left" id="btnLeft" disabled>
+                ◄<br>ESQ
+            </button>
+            <button class="control-btn btn-stop" id="btnStop" disabled>
+                ■<br>PARAR
+            </button>
+            <button class="control-btn btn-right" id="btnRight" disabled>
+                ►<br>DIR
+            </button>
+            <button class="control-btn btn-backward" id="btnBackward" disabled>
+                ▼<br>RÉ
+            </button>
+        </div>
+
+        <div class="speed-control">
+            <label>Velocidade:</label>
+            <div class="speed-btns">
+                <button class="speed-btn active" id="btnNormal">Normal</button>
+                <button class="speed-btn" id="btnTurbo">Turbo</button>
+            </div>
+        </div>
+
+        <div class="warning">
+            <strong>Instruções:</strong><br>
+            1. Ligue o carrinho fisicamente<br>
+            2. Clique em "Conectar ao Carrinho"<br>
+            3. Selecione "SL-SF-24" na lista<br>
+            4. Use os botões para controlar
+        </div>
+
+        <div id="log" class="log">
+            Aguardando conexão...
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
+        const CHAR_WRITE_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
+        const ENCRYPTION_KEY = CryptoJS.enc.Hex.parse('34522a5b7a6e492c08090a9d8d2a23f8');
+        
+        let device = null;
+        let characteristic = null;
+        let commandInterval = null;
+        let currentCommand = { forward: 0, backward: 0, left: 0, right: 0, speed: 0x50 };
+        
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${time}] ${msg}<br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const controls = document.querySelectorAll('.control-btn');
+            
+            if (connected) {
+                statusEl.textContent = 'Conectado ao ' + device.name;
+                statusEl.className = 'status connected';
+                connectBtn.textContent = 'Desconectar';
+                controls.forEach(btn => btn.disabled = false);
+            } else {
+                statusEl.textContent = 'Desconectado';
+                statusEl.className = 'status disconnected';
+                connectBtn.textContent = 'Conectar ao Carrinho';
+                controls.forEach(btn => btn.disabled = true);
+            }
+        }
+        
+        function encryptCommand(forward, backward, left, right, speed) {
+            const plainArray = [
+                0x00,
+                0x43, 0x54, 0x4C,
+                forward,
+                backward,
+                left,
+                right,
+                speed,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ];
+            
+            const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(plainArray));
+            const encrypted = CryptoJS.AES.encrypt(wordArray, ENCRYPTION_KEY, {
+                mode: CryptoJS.mode.ECB,
+                padding: CryptoJS.pad.NoPadding
+            });
+            
+            const hex = encrypted.ciphertext.toString(CryptoJS.enc.Hex);
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(parseInt(hex.substr(i, 2), 16));
+            }
+            return new Uint8Array(bytes);
+        }
+        
+        async function sendCommand() {
+            if (!characteristic) return;
+            
+            try {
+                const cmd = encryptCommand(
+                    currentCommand.forward,
+                    currentCommand.backward,
+                    currentCommand.left,
+                    currentCommand.right,
+                    currentCommand.speed
+                );
+                await characteristic.writeValue(cmd);
+            } catch (error) {
+                log('Erro ao enviar comando: ' + error);
+            }
+        }
+        
+        function startCommandLoop() {
+            if (commandInterval) clearInterval(commandInterval);
+            commandInterval = setInterval(sendCommand, 100);
+        }
+        
+        function stopCommandLoop() {
+            if (commandInterval) {
+                clearInterval(commandInterval);
+                commandInterval = null;
+            }
+        }
+        
+        async function connect() {
+            try {
+                log('Procurando dispositivos...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [SERVICE_UUID] }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                
+                log('Conectando ao ' + device.name + '...');
+                const server = await device.gatt.connect();
+                
+                log('Obtendo serviço...');
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                
+                log('Obtendo characteristic...');
+                characteristic = await service.getCharacteristic(CHAR_WRITE_UUID);
+                
+                log('Conectado com sucesso!');
+                updateStatus(true);
+                startCommandLoop();
+                
+            } catch (error) {
+                log('Erro: ' + error);
+                updateStatus(false);
+            }
+        }
+        
+        async function disconnect() {
+            stopCommandLoop();
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+            }
+            device = null;
+            characteristic = null;
+            updateStatus(false);
+            log('Desconectado');
+        }
+        
+        document.getElementById('connectBtn').addEventListener('click', () => {
+            if (device && device.gatt.connected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        });
+        
+        document.getElementById('btnForward').addEventListener('click', () => {
+            currentCommand = { forward: 1, backward: 0, left: 0, right: 0, speed: currentCommand.speed };
+            log('Comando: FRENTE');
+        });
+        
+        document.getElementById('btnBackward').addEventListener('click', () => {
+            currentCommand = { forward: 0, backward: 1, left: 0, right: 0, speed: currentCommand.speed };
+            log('Comando: RÉ');
+        });
+        
+        document.getElementById('btnLeft').addEventListener('click', () => {
+            currentCommand = { forward: 0, backward: 0, left: 1, right: 0, speed: currentCommand.speed };
+            log('Comando: ESQUERDA');
+        });
+        
+        document.getElementById('btnRight').addEventListener('click', () => {
+            currentCommand = { forward: 0, backward: 0, left: 0, right: 1, speed: currentCommand.speed };
+            log('Comando: DIREITA');
+        });
+        
+        document.getElementById('btnStop').addEventListener('click', () => {
+            currentCommand = { forward: 0, backward: 0, left: 0, right: 0, speed: currentCommand.speed };
+            log('Comando: PARAR');
+        });
+        
+        document.getElementById('btnNormal').addEventListener('click', function() {
+            currentCommand.speed = 0x50;
+            document.getElementById('btnNormal').classList.add('active');
+            document.getElementById('btnTurbo').classList.remove('active');
+            log('Velocidade: NORMAL');
+        });
+        
+        document.getElementById('btnTurbo').addEventListener('click', function() {
+            currentCommand.speed = 0x64;
+            document.getElementById('btnTurbo').classList.add('active');
+            document.getElementById('btnNormal').classList.remove('active');
+            log('Velocidade: TURBO');
+        });
+        
+        if (!navigator.bluetooth) {
+            log('ERRO: Web Bluetooth não suportado neste navegador!');
+            log('Use Chrome ou Edge no Windows/Android');
+            document.getElementById('connectBtn').disabled = true;
+        }
+    </script>
+</body>
+</html>
